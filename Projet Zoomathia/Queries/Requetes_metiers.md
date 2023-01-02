@@ -1,0 +1,11 @@
+- quels sont les animaux qui construisent un habitat (textes où l’on parle de cette construction)
+- quelles anecdotes mettant en relation un homme et un animal (pas toutes les relations hommes/animaux, comme la chasse, etc., mais seulement les situations individuelles, qui seront probablement marquées par un nom propre, ou un nom de lieu, etc.)
+-  quels sont les oiseaux qui sont consommés (gastronomie)
+-  quels sont les remèdes (thérapeutiques) qui incluent une langue animale (ou un morceau de langue)?
+- quels sont les animaux qui communiquent entre eux (textes où il est question de mode de communication, de langage, etc.)?
+- sur le rythme alimentaire des animaux : quels sont les animaux capables de jeûner, quelles sont les informations sur les rythmes de repas (fréquence)?
+- Quelles sont les données transmises sur le temps de gestation des animaux?—Quelles sont les expérimentations faites sur les animaux (contexte, description…)?
+- quels sont les animaux typiques de l’Afrique (qui ne sont pas considérés comme des variantes d’animaux connus en Europe, telles les moutons (ici d’Afrique), les lions (ici d’Afrique, mais il y en a aussi en Europe et en Asie)
+- quels sont les caractéristiques comportementaux des rongeurs, ou des souris
+- quelles sont les paires d’animaux (régulièrement associés) qui sont dans un rapport spécial d’affection (sympathie) ou de haine (antipathie)?
+- Quels sont les objets techniques réalisés avec des parties animales (peau, os, cornes…)?
