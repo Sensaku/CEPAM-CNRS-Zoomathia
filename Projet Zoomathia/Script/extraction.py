@@ -64,7 +64,6 @@ def get_comments(filepath):
     for c in activeDoc.Comments:
         if c.Ancestor is None:  # checking if this is a top-level comment
             for elt in unicodedata.normalize("NFKD", c.Range.Text).strip().split(";"):
-                print(c.Range.paragraphs)
                 if elt == "":
                     continue
                 elt = elt.replace("\n", "").replace("\r", "").replace(u"\xa0", "").strip()
@@ -74,15 +73,14 @@ def get_comments(filepath):
                     data = list()
                     candidate = candidate.replace("\n", "").replace("\r", "").replace(u"\xa0", "").replace("?", "").replace("!","").replace("¿", "").strip()
                     for temp in candidate.split(","):
-                        for response in skos_search(temp.strip(), parent):
+                        for response in skos_exact_search(temp.strip(), parent):
                             data = list()
                             data.append(candidate)
                             data.append(text)
                             data.append(response.replace("<", "").replace(">", ""))
                             data.append(f"{name_file.split('.')[0]}")
                             annotation.append(data)
-                        if parent == "":
-                            parent = candidate
+                    parent = candidate
     doc.Close()
     return annotation
 
@@ -111,6 +109,42 @@ def load(path):
 
     return graph
 
+def skos_exact_search(label, parent=""):
+    if parent != "":
+        q = f""" 
+    prefix skos: <http://www.w3.org/2004/02/skos/core#>  .
+
+    select distinct * where {{
+        ?x skos:prefLabel ?label.
+        ?x skos:broader+ ?y .
+        ?y skos:narrower+ ?x. 
+        ?y skos:prefLabel ?ll.
+        filter (str(?ll) in (ucase("{parent}"), lcase("{parent}"), "{parent}"))
+        filter (str(?label) in (ucase("{label}"), lcase("{label}"), "{label}"))
+    }} """
+        query_result = sparqlQuery(graph, q)
+        candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
+        if candidate == []:
+            return skos_exact_search(label, parent="")
+        if len(candidate) > 1:
+            too_many_candidate.append([label, ",".join(candidate), parent, f"{name_file.split('.')[0]}"])
+        return candidate
+    else:
+        q = f""" 
+    prefix skos: <http://www.w3.org/2004/02/skos/core#>  .
+
+    select distinct * where {{
+        ?x skos:prefLabel ?label.
+        filter (str(?label) in (ucase("{label}"), lcase("{label}"), "{label}"))
+    }} """
+        query_result = sparqlQuery(graph, q)
+        candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
+        if candidate == []:
+            return skos_search(label, parent)
+        if len(candidate) > 1:
+            too_many_candidate.append([label, ",".join(candidate), "", f"{name_file.split('.')[0]}"])
+        return candidate
+    return
 
 def skos_search(label, parent=""):
 
@@ -119,17 +153,17 @@ def skos_search(label, parent=""):
             prefix skos: <http://www.w3.org/2004/02/skos/core#>  .
 
             select distinct * where {{
-                ?x skos:prefLabel ?label;
+                ?x skos:prefLabel ?label.
                 
-                OPTIONAL {{?x skos:broader ?y . ?y skos:prefLabel ?ll. filter(str(?ll) in (ucase("{parent}"), lcase("{parent}"), "{parent}"))}}
-                OPTIONAL {{?x skos:narrower ?y. ?y skos:prefLabel ?ll. filter(str(?ll) in (ucase("{parent}"), lcase("{parent}"), "{parent}"))}}
-                filter (str(?label) in (ucase("{label}"), lcase("{label}"), "{label}"))
-	            
+                ?x skos:broader+ ?y . ?y skos:prefLabel ?ll. 
+                ?y skos:narrower+ ?x. ?y skos:prefLabel ?ll.
+                filter(contains(str(?ll), "{parent}"))
+                filter (contains(str(?label),"{label}"))
             }} """
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
-            no_concept_found.append([label, parent, f"{name_file.split('.')[0]}"])
+            return skos_search(label, parent="")
         if len(candidate) > 1:
             too_many_candidate.append([label, ",".join(candidate), parent, f"{name_file.split('.')[0]}"])
         return candidate
@@ -139,14 +173,14 @@ def skos_search(label, parent=""):
 
             select distinct * where {{
                 ?x skos:prefLabel ?label.
-                filter (str(?label) in (ucase("{label}"), lcase("{label}"), "{label}"))
+                filter (contains(str(?label), "{label}"))
             }} """
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
             no_concept_found.append([label, "", f"{name_file.split('.')[0]}"])
         if len(candidate) > 1:
-            too_many_candidate.append([label, ",".join(candidate), "", f"{name_file.split('.')[0]}"])
+            too_many_candidate.append([label, ", ".join(candidate), "", f"{name_file.split('.')[0]}"])
         return candidate
     return
 
@@ -176,10 +210,13 @@ if __name__ == '__main__':
         filepath = path.normpath(f"{getcwd()}\\{file}")
 
         extraction_annotation = pd.DataFrame(get_comments(filepath), columns=["annotation", "text", "concept", "chapter"])
-        extraction_annotation.to_csv(f"comment_extraction_{file.split('.')[0]}.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
+        extraction_annotation.to_csv(f"comment_extraction_{file.split('.')[0]}.csv",
+                                     index=False, encoding="utf-8", sep=";", lineterminator="\n")
 
         too_many = pd.DataFrame(too_many_candidate, columns=["label", "candidate", "parent", "chapter"])
-        too_many.to_csv(f"too_many_candidate_{file.split('.')[0]}.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
+        too_many.to_csv(f"too_many_candidate_{file.split('.')[0]}.csv", index=False, encoding="utf-8",
+                        sep=";", lineterminator="\n")
 
         no_concept = pd.DataFrame(no_concept_found, columns=["label", "parent", "chapter"])
-        no_concept.to_csv(f"no_concept_found_{file.split('.')[0]}.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
+        no_concept.to_csv(f"no_concept_found_{file.split('.')[0]}.csv", index=False, encoding="utf-8",
+                          sep=";", lineterminator="\n")

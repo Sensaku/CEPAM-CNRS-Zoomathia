@@ -1,3 +1,4 @@
+# Requêtes métiers
 - quels sont les animaux qui construisent un habitat (textes où l’on parle de cette construction)
 - quelles anecdotes mettant en relation un homme et un animal (pas toutes les relations hommes/animaux, comme la chasse, etc., mais seulement les situations individuelles, qui seront probablement marquées par un nom propre, ou un nom de lieu, etc.)
 -  quels sont les oiseaux qui sont consommés (gastronomie)
