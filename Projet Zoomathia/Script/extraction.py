@@ -73,6 +73,8 @@ def get_comments(filepath):
                     data = list()
                     candidate = candidate.replace("\n", "").replace("\r", "").replace(u"\xa0", "").replace("?", "").replace("!","").replace("¿", "").strip()
                     for temp in candidate.split(","):
+                        if temp == "":
+                            continue
                         for response in skos_exact_search(temp.strip(), parent):
                             data = list()
                             data.append(candidate)
@@ -191,9 +193,6 @@ if __name__ == '__main__':
     too_many_candidate = list()
 
     graph = load("th310.ttl")
-    print(skos_search("size"))
-    print(skos_search("relative", "size"))
-    print(skos_search("fear"))
 
     # Lecture du fichier turtle du skos
     g = rdflib.Graph()
@@ -209,7 +208,8 @@ if __name__ == '__main__':
         too_many_candidate = list()
         filepath = path.normpath(f"{getcwd()}\\{file}")
 
-        extraction_annotation = pd.DataFrame(get_comments(filepath), columns=["annotation", "text", "concept", "chapter"])
+        extraction_annotation = pd.DataFrame(get_comments(filepath),
+                                             columns=["annotation", "text", "concept", "chapter"])
         extraction_annotation.to_csv(f"comment_extraction_{file.split('.')[0]}.csv",
                                      index=False, encoding="utf-8", sep=";", lineterminator="\n")
 
