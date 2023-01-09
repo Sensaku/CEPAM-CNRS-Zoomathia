@@ -126,6 +126,7 @@ def get_comments(filepath):
                             concept = response.split("idc=")[-1].split("&idt=")[0]
                             if str(c.Index) in extraction_paragraph.keys():
                                 annotation.append([c.Index, temp, text, concept, f"{name_file.split('.')[0]}", extraction_paragraph[str(c.Index)][0].strip()])
+
                     parent = candidate
     doc.Close()
     return annotation
