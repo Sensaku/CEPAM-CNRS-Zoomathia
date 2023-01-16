@@ -18,7 +18,6 @@ from win32com.client import constants
 from os import path
 
 import pandas as pd
-import numpy as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from docx import Document
@@ -55,6 +54,8 @@ broader_p = rdflib.SKOS.broader
 narrower_p = rdflib.SKOS.narrower
 name_file = ""
 
+
+nb_commentaire, nb_concepts, nb_paragraph = 0, 0, 0
 # Function to extract all the comments of document(Same as accepted answer)
 # Returns a dictionary with comment id as key and comment string as value
 def get_document_comments(docxFileName):
@@ -104,10 +105,12 @@ def comments_with_reference_paragraph(docxFileName):
     return comments_with_their_reference_paragraph
 
 def get_comments(filepath):
+    global nb_commentaire, nb_concepts
     doc = word.Documents.Open(filepath)
     doc.Activate()
     activeDoc = word.ActiveDocument
     annotation = list()
+    nb_commentaire += len(activeDoc.Comments)
     for c in activeDoc.Comments:
         if c.Ancestor is None:  # checking if this is a top-level comment
             for elt in unicodedata.normalize("NFKD", c.Range.Text).strip().split(";"):
@@ -122,10 +125,11 @@ def get_comments(filepath):
                     for temp in candidate.split(","):
                         if temp == "":
                             continue
+                        nb_concepts += 1
                         for response in skos_exact_search(temp.strip(), parent):
                             concept = response.split("idc=")[-1].split("&idt=")[0]
                             if str(c.Index) in extraction_paragraph.keys():
-                                annotation.append([c.Index, temp, text, concept, f"{name_file.split('.')[0]}", extraction_paragraph[str(c.Index)][0].strip()])
+                                annotation.append([c.Index, temp, text, concept, f"{name_file.split('.')[0].split('-')[1]}", extraction_paragraph[str(c.Index)][0].strip()])
 
                     parent = candidate
     doc.Close()
@@ -176,10 +180,10 @@ def skos_exact_search(label, parent=""):
             if result == []:
                 return skos_exact_search(label, parent="")
             if len(result) > 1:
-                too_many_candidate.append([label, ",".join(result), parent, f"{name_file.split('.')[0]}"])
+                many_candidates.append([label, parent, ",".join(result), f"{name_file.split('.')[0]}"])
             return result
         if len(candidate) > 1:
-            too_many_candidate.append([label, ",".join(candidate), parent, f"{name_file.split('.')[0]}"])
+            many_candidates.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}"])
         return candidate
     else:
         q = f""" 
@@ -194,7 +198,7 @@ def skos_exact_search(label, parent=""):
         if candidate == []:
             return skos_search(label, parent)
         if len(candidate) > 1:
-            too_many_candidate.append([label, ",".join(candidate), "", f"{name_file.split('.')[0]}"])
+            many_candidates.append([label, "", ",".join(candidate), f"{name_file.split('.')[0]}"])
         return candidate
     return
 
@@ -217,7 +221,7 @@ def skos_search(label, parent=""):
         if candidate == []:
             return skos_search(label, parent="")
         if len(candidate) > 1:
-            too_many_candidate.append([label, ",".join(candidate), parent, f"{name_file.split('.')[0]}"])
+            many_candidates.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}"])
         return candidate
     else:
         q = f""" 
@@ -232,7 +236,7 @@ def skos_search(label, parent=""):
         if candidate == []:
             no_concept_found.append([label, "", f"{name_file.split('.')[0]}"])
         if len(candidate) > 1:
-            too_many_candidate.append([label, ", ".join(candidate), "", f"{name_file.split('.')[0]}"])
+            many_candidates.append([label, "", ", ".join(candidate), f"{name_file.split('.')[0]}"])
         return candidate
     return
 
@@ -240,52 +244,54 @@ def skos_search(label, parent=""):
 if __name__ == '__main__':
     alpha = time()
     no_concept_found = list()
-    too_many_candidate = list()
+    many_candidates = list()
 
     graph = load("th310.ttl")
 
-    # Lecture du fichier turtle du skos
-    g = rdflib.Graph()
-    g.parse("th310.ttl")
     files = [x for x in glob("PLINE-*.docx")]
 
     # Lecture du fichier word: lance un word en arrière plan.
 
     word = win32.gencache.EnsureDispatch('Word.Application')
     word.Visible = False
+    paragraph_list = []
+    annotation_list = []
+    many_candidates = []
+    no_concept_found = []
+
     for file in files:
         print(file)
         name_file = file
-        no_concept_found = list()
-        too_many_candidate = list()
         filepath = path.normpath(f"{getcwd()}\\{file}")
 
         doc_obj = Document(filepath)
         docxZip = zipfile.ZipFile(filepath)
-        para_content = [p.text for p in doc_obj.paragraphs]
 
-        extract_para = pd.DataFrame([[
+        para_content = [p.text for p in doc_obj.paragraphs]
+        nb_paragraph += len(doc_obj.paragraphs)
+        paragraph_list.extend([[
+            f"{file.split('.')[0]}",
             para_content[0].split("]]")[-1].strip(),
             para_content[1].split("]]")[-1].strip(),
             para_content[2].split("]]")[-1].strip(),
+            file.split(".")[0].split("-")[1],
             "".join(p.split("]]")[0].split("[[")[-1]).strip(),
-            "".join(p.split("]]")[-1]).strip()] for p in para_content[3:] if p != ""],
-            columns=["title", "author", "edition", "paragraph_number", "paragraphe_text"]
-        )
-        extract_para.to_csv(f"paragraphs_{file.split('.')[0]}.csv", index=False, encoding="utf-8",
-                          sep=";", lineterminator="\n")
+            "".join(p.split("]]")[-1]).strip()] for p in para_content[3:] if p != ""])
+
         extraction_paragraph = comments_with_reference_paragraph(filepath)
+        annotation_list.extend(get_comments(filepath))
 
-        extraction_annotation = pd.DataFrame(get_comments(filepath),
-                                             columns=["id","annotation", "text", "concept", "chapter", "paragraph"])
-        extraction_annotation.to_csv(f"comment_extraction_{file.split('.')[0]}.csv",
-                                     index=False, encoding="utf-8", sep=";", lineterminator="\n")
+    too_many = pd.DataFrame(many_candidates, columns=["label", "parent", "candidate", "chapter"])
+    too_many.to_csv(f"too_many_candidate.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
-        too_many = pd.DataFrame(too_many_candidate, columns=["label", "candidate", "parent", "chapter"])
-        too_many.to_csv(f"too_many_candidate_{file.split('.')[0]}.csv", index=False, encoding="utf-8",
-                        sep=";", lineterminator="\n")
+    no_concept = pd.DataFrame(no_concept_found, columns=["label", "parent", "chapter"])
+    no_concept.to_csv(f"no_concept_found.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
-        no_concept = pd.DataFrame(no_concept_found, columns=["label", "parent", "chapter"])
-        no_concept.to_csv(f"no_concept_found_{file.split('.')[0]}.csv", index=False, encoding="utf-8",
-                          sep=";", lineterminator="\n")
-    print(time() - alpha)
+    extract_para = pd.DataFrame(paragraph_list, columns=["name", "title", "author", "edition", "chapter", "paragraph_number", "paragraphe_text"])
+    extract_para.to_csv(f"paragraphs.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
+
+    extraction_annotation = pd.DataFrame(annotation_list, columns=["id", "annotation", "text", "concept", "chapter", "paragraph"])
+    extraction_annotation.to_csv(f"comment_extraction.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
+
+    print(f"Traitement fini en '{time() - alpha}' secondes")
+    print(f"nombre de paragraphes {nb_paragraph}, nombre de commentaires {nb_commentaire}, nombre de concepts: {nb_concepts}")
