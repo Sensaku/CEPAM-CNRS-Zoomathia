@@ -136,7 +136,7 @@ if __name__ == '__main__':
     plt.ylabel("concept")
     plt.xlabel("occurrences")
     plt.tight_layout()
-    plt.savefig('occurrences.png')
+    plt.savefig('stats/occurrences.png')
 
     x2, y2 = get_most_general_concept()
     plt.barh(x2, y2)
@@ -150,13 +150,13 @@ if __name__ == '__main__':
     plt.ylabel("concept_générique")
     plt.xlabel("occurrences")
     plt.tight_layout()
-    plt.savefig('generals.png')
+    plt.savefig('stats/generals.png')
     plt.close()
 
     x, y = ["Annotation", "concept distinct"], [24442, 3083]
     plt.bar(x,y)
     plt.tight_layout()
-    plt.savefig("global.png")
+    plt.savefig("stats/global.png")
     plt.close()
 
     files = ["no_concept.ttl"]
@@ -165,7 +165,7 @@ if __name__ == '__main__':
     x, y = get_concept_not_found()
     plt.barh(x, y)
     plt.tight_layout()
-    plt.savefig("not_found.png")
+    plt.savefig("stats/not_found.png")
     plt.close()
 
     files = ["overloaded.ttl"]
@@ -174,6 +174,6 @@ if __name__ == '__main__':
     x, y = get_concept_not_found()
     plt.barh(x, y)
     plt.tight_layout()
-    plt.savefig("overloaded.png")
+    plt.savefig("stats/overloaded.png")
     plt.close()
 

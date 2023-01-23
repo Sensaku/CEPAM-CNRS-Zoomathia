@@ -126,10 +126,10 @@ def get_comments(filepath):
                         if temp == "":
                             continue
                         nb_concepts += 1
-                        for response in skos_exact_search(temp.strip(), parent):
+                        for response in skos_exact_search(temp.strip(), parent=parent, commentaire=elt):
                             concept = response.split("idc=")[-1].split("&idt=")[0]
                             if str(c.Index) in extraction_paragraph.keys():
-                                annotation.append([c.Index, temp, text, concept, f"{name_file.split('.')[0].split('-')[1]}", extraction_paragraph[str(c.Index)][0].strip()])
+                                annotation.append([c.Index, temp, text, concept, f"{name_file.split('.')[0]}", f"{name_file.split('.')[0].split('-')[1]}", extraction_paragraph[str(c.Index)][0].strip()])
 
                     parent = candidate
     doc.Close()
@@ -160,7 +160,7 @@ def load(path):
 
     return graph
 
-def skos_exact_search(label, parent=""):
+def skos_exact_search(label, parent="", commentaire=""):
     if parent != "":
         q = f""" 
     prefix skos: <http://www.w3.org/2004/02/skos/core#>  .
@@ -176,14 +176,14 @@ def skos_exact_search(label, parent=""):
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
-            result = skos_search(label, parent)
+            result = skos_search(label, parent, commentaire)
             if result == []:
-                return skos_exact_search(label, parent="")
+                return skos_exact_search(label, parent="", commentaire=commentaire)
             if len(result) > 1:
-                many_candidates.append([label, parent, ",".join(result), f"{name_file.split('.')[0]}"])
+                many_candidates.append([label, parent, ",".join(result), f"{name_file.split('.')[0]}", commentaire])
             return result
         if len(candidate) > 1:
-            many_candidates.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}"])
+            many_candidates.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire])
         return candidate
     else:
         q = f""" 
@@ -196,13 +196,13 @@ def skos_exact_search(label, parent=""):
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
-            return skos_search(label, parent)
+            return skos_search(label, parent, commentaire)
         if len(candidate) > 1:
-            many_candidates.append([label, "", ",".join(candidate), f"{name_file.split('.')[0]}"])
+            many_candidates.append([label, "", ",".join(candidate), f"{name_file.split('.')[0]}", commentaire])
         return candidate
     return
 
-def skos_search(label, parent=""):
+def skos_search(label, parent="", commentaire=""):
 
     if parent != "":
         q = f""" 
@@ -219,9 +219,9 @@ def skos_search(label, parent=""):
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
-            return skos_search(label, parent="")
+            return skos_search(label, parent="", commentaire=commentaire)
         if len(candidate) > 1:
-            many_candidates.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}"])
+            many_candidates.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire])
         return candidate
     else:
         q = f""" 
@@ -234,9 +234,9 @@ def skos_search(label, parent=""):
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
-            no_concept_found.append([label, "", f"{name_file.split('.')[0]}"])
+            no_concept_found.append([label, "", f"{name_file.split('.')[0]}", commentaire])
         if len(candidate) > 1:
-            many_candidates.append([label, "", ", ".join(candidate), f"{name_file.split('.')[0]}"])
+            many_candidates.append([label, "", ", ".join(candidate), f"{name_file.split('.')[0]}", commentaire])
         return candidate
     return
 
@@ -281,16 +281,16 @@ if __name__ == '__main__':
         extraction_paragraph = comments_with_reference_paragraph(filepath)
         annotation_list.extend(get_comments(filepath))
 
-    too_many = pd.DataFrame(many_candidates, columns=["label", "parent", "candidate", "chapter"])
+    too_many = pd.DataFrame(many_candidates, columns=["label", "parent", "candidate", "chapter", "mention"])
     too_many.to_csv(f"too_many_candidate.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
-    no_concept = pd.DataFrame(no_concept_found, columns=["label", "parent", "chapter"])
+    no_concept = pd.DataFrame(no_concept_found, columns=["label", "parent", "chapter", "mention"])
     no_concept.to_csv(f"no_concept_found.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
     extract_para = pd.DataFrame(paragraph_list, columns=["name", "title", "author", "edition", "chapter", "paragraph_number", "paragraphe_text"])
     extract_para.to_csv(f"paragraphs.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
-    extraction_annotation = pd.DataFrame(annotation_list, columns=["id", "annotation", "text", "concept", "chapter", "paragraph"])
+    extraction_annotation = pd.DataFrame(annotation_list, columns=["id", "annotation", "text", "concept", "name", "chapter", "paragraph"])
     extraction_annotation.to_csv(f"comment_extraction.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
     print(f"Traitement fini en '{time() - alpha}' secondes")
