@@ -111,7 +111,7 @@ ORDER BY ?paragraph
 
 <u>Extrait de réponse de la requête:</u>
 
-![qc1](C:\Users\barbe\Desktop\CEPAM-CNRS-Zoomathia\Projet Zoomathia\QC\img\qc1.png)
+![qc1](img/qc1.png)
 
 ### Quelles anecdotes mettant en relation un homme et un animal (pas toutes les relations hommes/animaux, comme la chasse, etc., mais seulement les situations individuelles, qui seront probablement marquées par un nom propre, ou un nom de lieu, etc.)
 
