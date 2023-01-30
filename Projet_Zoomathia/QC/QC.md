@@ -161,7 +161,7 @@ ORDER BY ?paragraph
 
 Extrait résultat:
 
-![qc2](C:\Users\barbe\Desktop\CEPAM-CNRS-Zoomathia\Projet Zoomathia\QC\img\qc2.png)
+![qc2](img/qc2.png)
 
 ### Quels sont les oiseaux qui sont consommés (gastronomie)
 
@@ -210,7 +210,7 @@ ORDER BY ?paragraph
 
 Extrait résultat:
 
-![qc3](C:\Users\barbe\Desktop\CEPAM-CNRS-Zoomathia\Projet Zoomathia\QC\img\qc3.png)
+![qc3](img/qc3.png)
 
 ### Quels sont les remèdes (thérapeutiques) qui incluent une langue animale (ou un morceau de langue)?
 
