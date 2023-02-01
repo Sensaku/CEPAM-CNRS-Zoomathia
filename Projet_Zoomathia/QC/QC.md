@@ -217,6 +217,7 @@ Extrait résultat:
 Reformulation: Les annotations qui mentionnent un remède , <u>**une langue et un animal**</u> faisant parti du même paragraphe
 
 Note: Difficile de trouver le concept "remède thérapeutique" ou "remède". Dans la hiérarchie, il existe remède vétérinaire (erreur dans l'accent utilisé dans le thésaurus). https://opentheso.huma-num.fr/opentheso/?idc=105552&idt=th310
+Tentative d'utilisation "medical use of animal", "medical use of animal parts". Résultat basé sur le concept générique "medical use of animal" et inclue tous les descendant.
 
 Il est possible de trouver les mentions de langue et l'animal en question cependant.
 
@@ -225,14 +226,21 @@ PREFIX oa:     <http://www.w3.org/ns/oa#>.
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
 PREFIX schema:  <http://schema.org/> .
 
-SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?mention_construction WHERE {
+SELECT DISTINCT ?paragraph ?name_animal ?mention1 ?mention2 WHERE {
   ?annotation1 a oa:Annotation;
               oa:hasBody ?animal;
               oa:hasTarget ?target1.
   ?target1 oa:hasSource ?paragraph;
-     oa:hasSelector ?selector.
+     oa:hasSelector ?selector1.
+
+?annotation2 a oa:Annotation;
+              oa:hasBody ?use;
+              oa:hasTarget ?target2.
+  ?target2 oa:hasSource ?paragraph;
+     oa:hasSelector ?selector2.
     
-  ?selector oa:exact ?mention_animal.
+  ?selector1 oa:exact ?mention1.
+  ?selector2 oa:exact ?mention2.
 
   ?animal a skos:Concept;
        skos:prefLabel ?name_animal.
@@ -241,36 +249,34 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?ment
        skos:prefLabel ?name_animal_collection;
        skos:member ?animal.
 
-  ?annotation2 oa:hasBody ?construction;
-        oa:hasTarget ?target2.
-  ?target2 oa:hasSource ?paragraph;
-      oa:hasSelector ?selector2.
-  ?selector2 oa:exact ?mention_construction.
-
-  ?construction skos:prefLabel ?name_construction;
-     	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
+  ?use skos:prefLabel ?name_use;
+	skos:broader+ ?use_generique.
+  ?use_generique skos:prefLabel ?name_use_generique.
 
   FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
+  FILTER (str(?name_use_generique) = "medical use of animal").
   FILTER (lang(?name_animal) = "en").
-  FILTER (lang(?name_construction) = "en")
+  FILTER (lang(?name_use) = "en")
 }
 ORDER BY ?paragraph
 ```
 
 Extrait résultat:
 
-
+![qc4](img/qc4.png)
 
 ### Quels sont les animaux qui communiquent entre eux (textes où il est question de mode de communication, de langage, etc.)?
+
+Remarque: Pas de concept **spécifique** qui représente ce comportement dans "comportement social". Le Concept le plus proche de communication est "Parole". Possibilité de chercher comportement social général et parole au sein d'un même paragraphe (Pas de résultat).
+
+Solution: On se concentre uniquement sur le concept de parole. Ce qui inclue les mimiques, la compréhension de la parole humaine, etc... 
 
 ```sparql
 PREFIX oa:     <http://www.w3.org/ns/oa#>.
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
 PREFIX schema:  <http://schema.org/> .
 
-SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?mention_construction WHERE {
+SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_social ?mention_social WHERE {
   ?annotation1 a oa:Annotation;
               oa:hasBody ?animal;
               oa:hasTarget ?target1.
@@ -286,27 +292,29 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?ment
        skos:prefLabel ?name_animal_collection;
        skos:member ?animal.
 
-  ?annotation2 oa:hasBody ?construction;
+  ?annotation2 oa:hasBody ?social;
         oa:hasTarget ?target2.
   ?target2 oa:hasSource ?paragraph;
       oa:hasSelector ?selector2.
-  ?selector2 oa:exact ?mention_construction.
+  ?selector2 oa:exact ?mention_social.
 
-  ?construction skos:prefLabel ?name_construction;
-     	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
+  ?social skos:prefLabel ?name_social.
 
   FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
+  FILTER (str(?name_social) = "speech").
   FILTER (lang(?name_animal) = "en").
-  FILTER (lang(?name_construction) = "en")
+  FILTER (lang(?name_social) = "en")
 }
 ORDER BY ?paragraph
 ```
 
+Extrait résultat:
 
+![qc5](img/qc5.png)
 
 ### Sur le rythme alimentaire des animaux : quels sont les animaux capables de jeûner, quelles sont les informations sur les rythmes de repas (fréquence)?
+
+Reformulation: une annotation mentionnant un animal et une annotation mentionnant le jeune dans le même paragraphe
 
  ```sparql
  PREFIX oa:     <http://www.w3.org/ns/oa#>.
@@ -351,12 +359,16 @@ ORDER BY ?paragraph
 
 ### Quelles sont les données transmises sur le temps de gestation des animaux?
 
+Remarque: Il n'existe pas de concept représentant la "**valeur**" du temps de gestion. Voir ce qu'on peut faire (une collection de valeur ?)
+
 ```sparql
 ```
 
 
 
 ### Quelles sont les expérimentations faites sur les animaux (contexte, description…)?
+
+Remarque: 
 
 ```SPARQL
 PREFIX oa:     <http://www.w3.org/ns/oa#>.
