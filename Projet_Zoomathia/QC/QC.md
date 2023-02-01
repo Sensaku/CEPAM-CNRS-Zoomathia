@@ -1,6 +1,7 @@
 ## Patch note
 
-La récupération des résultats via Corèse n'est possible qu'a travers un graphe (XML). Il serait bien de faire un script Python qui transforme les réponses du graphe en CSV (possible avec Py4J et la Corese-Python-Lib) pour pouvoir faire une vérification minutieuse des résultats.  Je proposerai ça à terme, ce qui donnera une base pour le développement d'un "web application" Django.
+- La récupération des résultats via Corèse n'est possible qu'a travers un graphe (XML). Il serait bien de faire un script Python qui transforme les réponses du graphe en CSV (possible avec Py4J et la Corese-Python-Lib) pour pouvoir faire une vérification minutieuse des résultats.  Je proposerai ça à terme, ce qui donnera une base pour le développement d'un "web application" Django.
+- Il est difficile de reformuler avec des concepts du thesaurus certains termes des questions (trop précis, pas assez précis, pas d'équivalent direct).
 
 ## Préfixes utilisés
 
@@ -314,69 +315,61 @@ Extrait résultat:
 
 ### Sur le rythme alimentaire des animaux : quels sont les animaux capables de jeûner, quelles sont les informations sur les rythmes de repas (fréquence)?
 
-Reformulation: une annotation mentionnant un animal et une annotation mentionnant le jeune dans le même paragraphe
+Reformulation: une annotation mentionnant un animal et une annotation mentionnant le jeune dans le même paragraphe.
+
+Note: Jeûne en anglais se dit "Fast" ou "Fasting". Peut être renommer le concept en Fasting pour éviter toutes confusion. (se trouve dans vie quotidienne)
 
  ```sparql
  PREFIX oa:     <http://www.w3.org/ns/oa#>.
  PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
  PREFIX schema:  <http://schema.org/> .
  
- SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?mention_construction WHERE {
-   ?annotation1 a oa:Annotation;
-               oa:hasBody ?animal;
-               oa:hasTarget ?target1.
-   ?target1 oa:hasSource ?paragraph;
-      oa:hasSelector ?selector.
-     
-   ?selector oa:exact ?mention_animal.
- 
-   ?animal a skos:Concept;
-        skos:prefLabel ?name_animal.
-     
-   ?animal_collection a skos:Collection;
-        skos:prefLabel ?name_animal_collection;
-        skos:member ?animal.
- 
-   ?annotation2 oa:hasBody ?construction;
+ SELECT DISTINCT ?paragraph ?mention_fasting WHERE {
+   ?annotation2 oa:hasBody ?fasting;
          oa:hasTarget ?target2.
    ?target2 oa:hasSource ?paragraph;
        oa:hasSelector ?selector2.
-   ?selector2 oa:exact ?mention_construction.
+   ?selector2 oa:exact ?mention_fasting.
  
-   ?construction skos:prefLabel ?name_construction;
-      	            skos:broader+ ?construction_generique.
-   ?construction_generique skos:prefLabel ?name_construction_generique.
+   ?fasting skos:prefLabel ?name_fasting.
  
-   FILTER (str(?name_animal_collection) = "Ancient class").
-   FILTER (str(?name_construction_generique) = "house building").
-   FILTER (lang(?name_animal) = "en").
-   FILTER (lang(?name_construction) = "en")
+   FILTER (str(?name_fasting) = "fast").
+   FILTER (lang(?name_fasting) = "en")
  }
  ORDER BY ?paragraph
  ```
 
-
+Aucune mention de jeûne relevée dans les chapitres de Pline. Dans le fichier d'erreur, il y a la mention "special diet" qui pourrait faire référence au jeûne.
 
 ### Quelles sont les données transmises sur le temps de gestation des animaux?
 
 Remarque: Il n'existe pas de concept représentant la "**valeur**" du temps de gestion. Voir ce qu'on peut faire (une collection de valeur ?)
 
 ```sparql
-```
-
-
-
-### Quelles sont les expérimentations faites sur les animaux (contexte, description…)?
-
-Remarque: 
-
-```SPARQL
 PREFIX oa:     <http://www.w3.org/ns/oa#>.
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
 PREFIX schema:  <http://schema.org/> .
 
-SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?mention_construction WHERE {
-  ?annotation1 a oa:Annotation;
+SELECT DISTINCT ?paragraph ?mention_pregnancy WHERE {
+  ?annotation2 oa:hasBody ?pregnancy;
+        oa:hasTarget ?target2.
+  ?target2 oa:hasSource ?paragraph;
+      oa:hasSelector ?selector2.
+  ?selector2 oa:exact ?mention_pregnancy.
+
+  ?pregnancy skos:prefLabel ?name_pregnancy.
+
+  FILTER (str(?name_pregnancy) = "length of pregnancy").
+  FILTER (lang(?name_pregnancy) = "en")
+}
+ORDER BY ?paragraph
+###########################################################################################################################
+PREFIX oa:     <http://www.w3.org/ns/oa#>.
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
+PREFIX schema:  <http://schema.org/> .
+
+SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?mention_pregnancy WHERE {
+?annotation1 a oa:Annotation;
               oa:hasBody ?animal;
               oa:hasTarget ?target1.
   ?target1 oa:hasSource ?paragraph;
@@ -391,25 +384,72 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?ment
        skos:prefLabel ?name_animal_collection;
        skos:member ?animal.
 
-  ?annotation2 oa:hasBody ?construction;
+  ?annotation2 oa:hasBody ?pregnancy;
         oa:hasTarget ?target2.
   ?target2 oa:hasSource ?paragraph;
       oa:hasSelector ?selector2.
-  ?selector2 oa:exact ?mention_construction.
+  ?selector2 oa:exact ?mention_pregnancy.
 
-  ?construction skos:prefLabel ?name_construction;
-     	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
+  ?pregnancy skos:prefLabel ?name_pregnancy.
 
+  FILTER (str(?name_pregnancy) = "length of pregnancy").
+  FILTER (lang(?name_pregnancy) = "en")
   FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
   FILTER (lang(?name_animal) = "en").
-  FILTER (lang(?name_construction) = "en")
 }
 ORDER BY ?paragraph
 ```
 
+Extrait resultat:
 
+![qc7](img/qc7.png)
+
+![qc7_2](img/qc7_2.png)
+
+### Quelles sont les expérimentations faites sur les animaux (contexte, description…)?
+
+Remarque: Pas de concept expérimentations. On peut éventuellement se trouver dans le cadre d'une "utilisation de l'animal", cependant il n'y a pas de concept expriment l'utilisation pour la science ou autre. Peut être que ça rentre dans "l'utilisation médical" ou "technique" ?
+
+```SPARQL
+PREFIX oa:     <http://www.w3.org/ns/oa#>.
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
+PREFIX schema:  <http://schema.org/> .
+
+SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?mention_use WHERE {
+?annotation1 a oa:Annotation;
+              oa:hasBody ?animal;
+              oa:hasTarget ?target1.
+  ?target1 oa:hasSource ?paragraph;
+     oa:hasSelector ?selector.
+    
+  ?selector oa:exact ?mention_animal.
+
+  ?animal a skos:Concept;
+       skos:prefLabel ?name_animal.
+    
+  ?animal_collection a skos:Collection;
+       skos:prefLabel ?name_animal_collection;
+       skos:member ?animal.
+
+  ?annotation2 oa:hasBody ?use;
+        oa:hasTarget ?target2.
+  ?target2 oa:hasSource ?paragraph;
+      oa:hasSelector ?selector2.
+  ?selector2 oa:exact ?mention_use.
+
+  ?use skos:prefLabel ?name_use.
+
+  FILTER (str(?name_use) = "technical use").
+  FILTER (lang(?name_use) = "en")
+  FILTER (str(?name_animal_collection) = "Ancient class").
+  FILTER (lang(?name_animal) = "en").
+}
+ORDER BY ?paragraph
+```
+
+Extrait resultat
+
+![qc8](img/qc8.png)
 
 ### Quels sont les animaux typiques de l’Afrique (qui ne sont pas considérés comme des variantes d’animaux connus en Europe, telles les moutons (ici d’Afrique), les lions (ici d’Afrique, mais il y en a aussi en Europe et en Asie)
 
@@ -547,8 +587,8 @@ PREFIX oa:     <http://www.w3.org/ns/oa#>.
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
 PREFIX schema:  <http://schema.org/> .
 
-SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?mention_construction WHERE {
-  ?annotation1 a oa:Annotation;
+SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?mention_use WHERE {
+?annotation1 a oa:Annotation;
               oa:hasBody ?animal;
               oa:hasTarget ?target1.
   ?target1 oa:hasSource ?paragraph;
@@ -563,20 +603,18 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?ment
        skos:prefLabel ?name_animal_collection;
        skos:member ?animal.
 
-  ?annotation2 oa:hasBody ?construction;
+  ?annotation2 oa:hasBody ?use;
         oa:hasTarget ?target2.
   ?target2 oa:hasSource ?paragraph;
       oa:hasSelector ?selector2.
-  ?selector2 oa:exact ?mention_construction.
+  ?selector2 oa:exact ?mention_use.
 
-  ?construction skos:prefLabel ?name_construction;
-     	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
+  ?use skos:prefLabel ?name_use.
 
+  FILTER (str(?name_use) = "technical use").
+  FILTER (lang(?name_use) = "en")
   FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
   FILTER (lang(?name_animal) = "en").
-  FILTER (lang(?name_construction) = "en")
 }
 ORDER BY ?paragraph
 ```
