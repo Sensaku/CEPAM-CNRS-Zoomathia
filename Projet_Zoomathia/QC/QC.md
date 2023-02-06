@@ -89,7 +89,7 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?ment
        skos:prefLabel ?name_animal.
     
   ?animal_collection a skos:Collection;
-       skos:prefLabel ?name_animal_collection;
+       skos:prefLabel "Ancient class"@en;
        skos:member ?animal.
 
   ?annotation2 oa:hasBody ?construction;
@@ -100,10 +100,8 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?ment
 
   ?construction skos:prefLabel ?name_construction;
      	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
+  ?construction_generique skos:prefLabel "house building"@en.
 
-  FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
   FILTER (lang(?name_animal) = "en").
   FILTER (lang(?name_construction) = "en")
 }
@@ -454,42 +452,7 @@ Extrait resultat
 ### Quels sont les animaux typiques de l’Afrique (qui ne sont pas considérés comme des variantes d’animaux connus en Europe, telles les moutons (ici d’Afrique), les lions (ici d’Afrique, mais il y en a aussi en Europe et en Asie)
 
 ```SPARQL
-PREFIX oa:     <http://www.w3.org/ns/oa#>.
-PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
-PREFIX schema:  <http://schema.org/> .
 
-SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?mention_construction WHERE {
-  ?annotation1 a oa:Annotation;
-              oa:hasBody ?animal;
-              oa:hasTarget ?target1.
-  ?target1 oa:hasSource ?paragraph;
-     oa:hasSelector ?selector.
-    
-  ?selector oa:exact ?mention_animal.
-
-  ?animal a skos:Concept;
-       skos:prefLabel ?name_animal.
-    
-  ?animal_collection a skos:Collection;
-       skos:prefLabel ?name_animal_collection;
-       skos:member ?animal.
-
-  ?annotation2 oa:hasBody ?construction;
-        oa:hasTarget ?target2.
-  ?target2 oa:hasSource ?paragraph;
-      oa:hasSelector ?selector2.
-  ?selector2 oa:exact ?mention_construction.
-
-  ?construction skos:prefLabel ?name_construction;
-     	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
-
-  FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
-  FILTER (lang(?name_animal) = "en").
-  FILTER (lang(?name_construction) = "en")
-}
-ORDER BY ?paragraph
 ```
 
 
@@ -497,42 +460,7 @@ ORDER BY ?paragraph
 ### Quels sont les caractéristiques comportementaux des rongeurs, ou des souris ?
 
 ```SPARQL
-PREFIX oa:     <http://www.w3.org/ns/oa#>.
-PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
-PREFIX schema:  <http://schema.org/> .
 
-SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?mention_construction WHERE {
-  ?annotation1 a oa:Annotation;
-              oa:hasBody ?animal;
-              oa:hasTarget ?target1.
-  ?target1 oa:hasSource ?paragraph;
-     oa:hasSelector ?selector.
-    
-  ?selector oa:exact ?mention_animal.
-
-  ?animal a skos:Concept;
-       skos:prefLabel ?name_animal.
-    
-  ?animal_collection a skos:Collection;
-       skos:prefLabel ?name_animal_collection;
-       skos:member ?animal.
-
-  ?annotation2 oa:hasBody ?construction;
-        oa:hasTarget ?target2.
-  ?target2 oa:hasSource ?paragraph;
-      oa:hasSelector ?selector2.
-  ?selector2 oa:exact ?mention_construction.
-
-  ?construction skos:prefLabel ?name_construction;
-     	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
-
-  FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
-  FILTER (lang(?name_animal) = "en").
-  FILTER (lang(?name_construction) = "en")
-}
-ORDER BY ?paragraph
 ```
 
 
@@ -540,42 +468,7 @@ ORDER BY ?paragraph
 ### quelles sont les paires d’animaux (régulièrement associés) qui sont dans un rapport spécial d’affection (sympathie) ou de haine (antipathie)?
 
 ```SPARQL
-PREFIX oa:     <http://www.w3.org/ns/oa#>.
-PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
-PREFIX schema:  <http://schema.org/> .
 
-SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?mention_construction WHERE {
-  ?annotation1 a oa:Annotation;
-              oa:hasBody ?animal;
-              oa:hasTarget ?target1.
-  ?target1 oa:hasSource ?paragraph;
-     oa:hasSelector ?selector.
-    
-  ?selector oa:exact ?mention_animal.
-
-  ?animal a skos:Concept;
-       skos:prefLabel ?name_animal.
-    
-  ?animal_collection a skos:Collection;
-       skos:prefLabel ?name_animal_collection;
-       skos:member ?animal.
-
-  ?annotation2 oa:hasBody ?construction;
-        oa:hasTarget ?target2.
-  ?target2 oa:hasSource ?paragraph;
-      oa:hasSelector ?selector2.
-  ?selector2 oa:exact ?mention_construction.
-
-  ?construction skos:prefLabel ?name_construction;
-     	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
-
-  FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
-  FILTER (lang(?name_animal) = "en").
-  FILTER (lang(?name_construction) = "en")
-}
-ORDER BY ?paragraph
 ```
 
 
@@ -619,3 +512,25 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?mention_use WHERE {
 ORDER BY ?paragraph
 ```
 
+## Extraire le sous-graphe de connaissance d'un paragraphe 
+
+Exemple pour le paragraphe 195 du chapitre 8 de Pline.
+
+```SPARQL
+PREFIX oa:     <http://www.w3.org/ns/oa#>.
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
+PREFIX schema:  <http://schema.org/> .
+PREFIX graphs: <http://exemple.fr/>.
+PREFIX para: <http://www.zoomathia.com/PLINE-8-annoteIPL/8/>.
+
+construct { para:195 graphs:hasConcept ?label_concept.}  where {
+  ?annotation a oa:Annotation;
+              oa:hasBody ?concept;
+              oa:hasTarget ?target.
+  ?target oa:hasSource para:195.
+  ?concept skos:prefLabel ?label_concept.
+}
+
+```
+
+![sous_graph](img/sous_graph.png)
