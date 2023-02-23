@@ -15,7 +15,7 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?ment
        skos:prefLabel ?name_animal.
     
   ?animal_collection a skos:Collection;
-       skos:prefLabel ?name_animal_collection;
+       skos:prefLabel "Ancient class"@en;
        skos:member ?animal.
 
   ?annotation2 oa:hasBody ?construction;
@@ -26,10 +26,8 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_construction ?ment
 
   ?construction skos:prefLabel ?name_construction;
      	            skos:broader+ ?construction_generique.
-  ?construction_generique skos:prefLabel ?name_construction_generique.
+  ?construction_generique skos:prefLabel "house building"@en.
 
-  FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_construction_generique) = "house building").
   FILTER (lang(?name_animal) = "en").
   FILTER (lang(?name_construction) = "en")
 }
