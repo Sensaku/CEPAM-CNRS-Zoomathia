@@ -15,7 +15,7 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?mention_pregnancy WHERE
        skos:prefLabel ?name_animal.
     
   ?animal_collection a skos:Collection;
-       skos:prefLabel ?name_animal_collection;
+       skos:prefLabel "Ancient class"@en;
        skos:member ?animal.
 
   ?annotation2 oa:hasBody ?pregnancy;
@@ -24,11 +24,9 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?mention_pregnancy WHERE
       oa:hasSelector ?selector2.
   ?selector2 oa:exact ?mention_pregnancy.
 
-  ?pregnancy skos:prefLabel ?name_pregnancy.
+  ?pregnancy skos:prefLabel "length of pregnancy"@en.
 
-  FILTER (str(?name_pregnancy) = "length of pregnancy").
   FILTER (lang(?name_pregnancy) = "en")
-  FILTER (str(?name_animal_collection) = "Ancient class").
   FILTER (lang(?name_animal) = "en").
 }
 ORDER BY ?paragraph
