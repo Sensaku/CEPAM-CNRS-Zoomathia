@@ -26,10 +26,9 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?name_conso ?mention_con
 
   ?conso skos:prefLabel ?name_conso;
      	            skos:broader+ ?conso_generique.
-  ?conso_generique skos:prefLabel ?name_conso_generique.
+  ?conso_generique skos:prefLabel "animal in human nourishing"@en.
 
   FILTER (str(?name_animal_generique) in ("BIRD","BIRD WITH CLAW","BIRD WITH TOES","WATERBIRD","NIGHT BIRD","MIGRATORY BIRD", "PALMIPED BIRD")).
-  FILTER (str(?name_conso_generique) = "animal in human nourishing").
   FILTER (lang(?name_animal) = "en").
   FILTER (lang(?name_conso) = "en")
 }
