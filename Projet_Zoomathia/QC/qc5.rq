@@ -15,7 +15,7 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?mention_social WHERE {
        skos:prefLabel ?name_animal.
     
   ?animal_collection a skos:Collection;
-       skos:prefLabel ?name_animal_collection;
+       skos:prefLabel "Ancient class"@en;
        skos:member ?animal.
 
   ?annotation2 oa:hasBody ?social;
@@ -24,10 +24,8 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention_animal ?mention_social WHERE {
       oa:hasSelector ?selector2.
   ?selector2 oa:exact ?mention_social.
 
-  ?social skos:prefLabel ?name_social.
+  ?social skos:prefLabel "speech"@en.
 
-  FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_social) = "speech").
   FILTER (lang(?name_animal) = "en").
   FILTER (lang(?name_social) = "en")
 }
