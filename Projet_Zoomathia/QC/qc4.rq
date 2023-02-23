@@ -22,15 +22,13 @@ SELECT DISTINCT ?paragraph ?name_animal ?mention1 ?mention2 WHERE {
        skos:prefLabel ?name_animal.
     
   ?animal_collection a skos:Collection;
-       skos:prefLabel ?name_animal_collection;
+       skos:prefLabel "Ancient class"@en;
        skos:member ?animal.
 
   ?use skos:prefLabel ?name_use;
 	skos:broader+ ?use_generique.
-  ?use_generique skos:prefLabel ?name_use_generique.
-
-  FILTER (str(?name_animal_collection) = "Ancient class").
-  FILTER (str(?name_use_generique) = "medical use of animal").
+  ?use_generique skos:prefLabel "medical use of animal"@en.
+  
   FILTER (lang(?name_animal) = "en").
   FILTER (lang(?name_use) = "en")
 }
