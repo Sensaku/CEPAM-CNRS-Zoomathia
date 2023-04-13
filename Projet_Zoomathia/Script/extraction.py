@@ -28,7 +28,7 @@ ooXMLns = {'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
 
 # Start java gateway
 java_process = subprocess.Popen(
-    ['java', '-jar', '-Dfile.encoding=UTF-8', 'corese-library-python-4.3.0.jar'])
+    ['java', '-jar', '-Dfile.encoding=UTF-8', 'corese-library-python-4.4.0.jar'])
 sleep(1)
 gateway = JavaGateway()
 
@@ -65,10 +65,12 @@ def get_document_comments(docxFileName):
     commentsXML = docxZip.read('word/comments.xml')
     etc = etree.XML(commentsXML)
     comments = etc.xpath('//w:comment', namespaces=ooXMLns)
+    i = 0
     for c in comments:
         comment = c.xpath('string(.)', namespaces=ooXMLns)
-        comment_id = c.xpath('@w:id', namespaces=ooXMLns)[0]
-        comments_dict[comment_id] = comment
+        comment_id = str(int(c.xpath('@w:id', namespaces=ooXMLns)[0]) + 1)
+        comments_dict[str(i)] = comment
+        i += 1
     return comments_dict
 
 
@@ -104,6 +106,36 @@ def comments_with_reference_paragraph(docxFileName):
 
     return comments_with_their_reference_paragraph
 
+def get_full_extraction(filepath):
+    doc = word.Documents.Open(filepath)
+
+    comments = doc.Comments
+    # Parcourir les commentaires
+    extractions_full = []
+    for comment in comments:
+        # Récupérer l'objet Range représentant le commentaire
+        scope_comment = comment.Scope
+        # Récupérer l'objet Range correspondant au paragraphe contenant le commentaire
+        comment_text = comment.Scope.Text
+        # Récupère le text complet du paragraph
+        # paragraph_complet = scope_comment.Paragraphs(1)
+        # Récupère la portion de texte du paragraphe commentée
+        mention = comment.Range.Text
+
+        for p in scope_comment.Paragraphs:
+            id_paragraph = re.search(r"\[\[([0-9]*)\]\]", str(p)).group(1)
+            paragraph_clean = re.sub(r"\[\[([0-9]*)\]\]", "", str(p)).strip()
+            #todo add un re.split() pour isoler les chaines dans un paragraphe pour l'offset!
+            # tokens = re.split('[\s,;]+', str1)
+            print(comment_text.strip().find(paragraph_clean))
+            extractions_full.append(
+                [id_paragraph, paragraph_clean, comment_text.strip(), mention.strip()]
+            )
+    return extractions_full
+
+    doc.Close()
+
+
 def get_comments(filepath):
     global nb_commentaire, nb_concepts
     doc = word.Documents.Open(filepath)
@@ -111,6 +143,7 @@ def get_comments(filepath):
     activeDoc = word.ActiveDocument
     annotation = list()
     nb_commentaire += len(activeDoc.Comments)
+    idx = 0
     for c in activeDoc.Comments:
         if c.Ancestor is None:  # checking if this is a top-level comment
             for elt in unicodedata.normalize("NFKD", c.Range.Text).strip().split(";"):
@@ -126,15 +159,28 @@ def get_comments(filepath):
                         if temp == "":
                             continue
                         nb_concepts += 1
-                        for response in skos_search(temp.strip(), parent=parent, commentaire=elt):
+                        for response in skos_search(
+                                temp.strip(),
+                                parent=parent,
+                                commentaire=elt,
+                                paragraph=extraction_paragraph[str(idx)][0].strip(),
+                                text=extraction_paragraph[str(idx)][1]
+                        ):
                             if "idg=" in response:
                                 concept = response.split("idg=")[-1].split("&idt=")[0]
                             else:
                                 concept = response.split("idc=")[-1].split("&idt=")[0]
-                            if str(c.Index) in extraction_paragraph.keys():
-                                annotation.append([c.Index, temp, text, concept, f"{name_file.split('.')[0]}", f"{name_file.split('.')[0].split('-')[1]}", extraction_paragraph[str(c.Index)][0].strip()])
+                            if str(idx) in extraction_paragraph.keys():
+                                annotation.append([
+                                    c.Index,
+                                    temp, text, concept,
+                                    f"{name_file.split('.')[0]}",
+                                    f"{name_file.split('.')[0].split('-')[1]}",
+                                    extraction_paragraph[str(idx)][0].strip()
+                                ])
 
                     parent = candidate
+                idx += 1
     doc.Close()
     return annotation
 
@@ -163,7 +209,7 @@ def load(path):
 
     return graph
 
-def skos_search(label, parent, commentaire):
+def skos_search(label, parent, commentaire, paragraph, text):
     if parent != "":
         q = f"""
     prefix skos: <http://www.w3.org/2004/02/skos/core#>  .
@@ -192,12 +238,12 @@ select * where {{
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
             #Maybe hierarchi is not respected
-            return skos_search(label, "", commentaire)
+            return skos_search(label, "", commentaire, paragraph, text)
         if len(candidate) > 1:
             # add to error ambigous hierarchi and name case
             #["label", "parent", "chapter", "mention", "error_type"]
-            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "hierarchie_ambigu"])
-            return skos_search(label, "", commentaire)
+            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "hierarchie_ambigu", paragraph, text])
+            return skos_search(label, "", commentaire, paragraph, text)
         return candidate
     else:
         q = f"""
@@ -212,10 +258,10 @@ select * where {{
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
-            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "not_found"])
+            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "not_found", paragraph, text])
             return candidate
         if len(candidate) > 1:
-            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "concept_ambigu"])
+            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "concept_ambigu", paragraph, text])
             # add to error ambigous concept case
             return candidate
         return candidate
@@ -257,9 +303,9 @@ if __name__ == '__main__':
             "".join(p.split("]]")[-1]).strip()] for p in para_content[3:] if p != ""])
 
         extraction_paragraph = comments_with_reference_paragraph(filepath)
-        annotation_list.extend(get_comments(filepath))
+        annotation_list.extend(get_full_extraction(filepath))
 
-    no_concept = pd.DataFrame(error_found, columns=["label", "parent", "candidate","chapter", "mention", "error_type"])
+    no_concept = pd.DataFrame(error_found, columns=["label", "parent", "candidate","chapter", "mention", "error_type", "paragraph", "text"])
     no_concept.to_csv(f"error_found.csv", index=False, encoding="utf-8", sep=";", lineterminator="\n")
 
     extract_para = pd.DataFrame(paragraph_list, columns=["name", "title", "author", "edition", "chapter", "paragraph_number", "paragraphe_text"])
