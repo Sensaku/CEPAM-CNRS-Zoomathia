@@ -6,6 +6,7 @@ import subprocess
 from time import sleep
 from py4j.java_gateway import JavaGateway
 from py4j.java_collections import JavaMap
+import pandas as pd
 
 
 # Start java gateway
@@ -125,11 +126,70 @@ LIMIT 10
     value_list = [int(x.getValue('?nb').toString()) for x in query_result.getMappingList()]
     return label_list, value_list
 
+def get_QC1():
+    req = """
+    prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+    prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> 
+    prefix oa:     <http://www.w3.org/ns/oa#>
+    prefix skos: <http://www.w3.org/2004/02/skos/core#>
+    prefix schema:  <http://schema.org/>
+    prefix paragraph: <http://www.zoomathia.com/>
+
+    SELECT DISTINCT ?paragraph ?name_animal ?name_construction WHERE {
+      ?annotation1 a oa:Annotation;
+                  oa:hasBody ?animal;
+                  oa:hasTarget ?target1.
+      ?target1 oa:hasSource ?paragraph;
+         oa:hasSelector ?selector.
+
+      ?selector oa:exact ?mention_animal.
+
+      ?animal a skos:Concept;
+           skos:prefLabel ?name_animal.
+
+      ?animal_collection a skos:Collection;
+           skos:prefLabel "Ancient class"@en;
+           skos:member ?animal.
+
+      ?annotation2 oa:hasBody ?construction;
+            oa:hasTarget ?target2.
+      ?target2 oa:hasSource ?paragraph;
+          oa:hasSelector ?selector2.
+      ?selector2 oa:exact ?mention_construction.
+
+      ?construction skos:prefLabel ?name_construction;
+                        skos:broader+ ?construction_generique.
+      ?construction_generique skos:prefLabel "house building"@en.
+
+      FILTER (lang(?name_animal) = "en").
+      FILTER (lang(?name_construction) = "en")
+      FILTER not exists {?animal skos:narrower ?y}
+    }
+    ORDER BY ?paragraph
+    """
+
+    query_result = sparqlQuery(g, req)
+    pd.DataFrame([
+        [
+            x.getValue("?paragraph").toString(),
+            x.getValue("?name_animal").toString(),
+            x.getValue("?name_construction").toString()
+         ] for x in query_result.getMappingList()
+    ], columns=["paragraph", "animal", "construction"]).to_csv("qc1.csv", index=False, encoding="utf-8", sep=";", lineterminator="\n")
+    return
 
 if __name__ == '__main__':
 
-    files = ["annotations.ttl", "th310.ttl"]
+    label = ["generated", "to_check", "ambigue", "numeric", "incomplete", "no_concept"]
+    value = [8188, 128, 109, 7, 1052, 1549]
+    plt.bar(label, value)
+    plt.tight_layout()
+    plt.savefig('stats/stats_generation2.png')
+
+    """files = ["annotations.ttl", "paragraph.ttl", "th310.ttl"]
     g = load(files)
+
+    get_QC1()
     x, y = get_most_concepts()
 
     plt.barh(x, y)
@@ -158,7 +218,7 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.savefig("stats/global.png")
     plt.close()
-"""
+
     files = ["no_concept.ttl"]
     g = load(files)
 

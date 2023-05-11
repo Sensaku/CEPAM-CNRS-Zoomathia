@@ -234,7 +234,7 @@ PREFIX oa:     <http://www.w3.org/ns/oa#>.
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>.
 PREFIX schema:  <http://schema.org/> .
 
-SELECT DISTINCT ?paragraph ?name_animal ?mention1 ?mention2 WHERE {
+SELECT DISTINCT ?paragraph ?name_animal ?mention1 ?name_use ?mention2 WHERE {
   ?annotation1 a oa:Annotation;
               oa:hasBody ?animal;
               oa:hasTarget ?target1.

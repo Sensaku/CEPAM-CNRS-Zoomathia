@@ -4,6 +4,7 @@ from glob import glob
 import rdflib
 from os import getcwd
 from time import time
+import difflib
 
 # Corese execute
 import atexit
@@ -56,133 +57,54 @@ name_file = ""
 
 
 nb_commentaire, nb_concepts, nb_paragraph = 0, 0, 0
-# Function to extract all the comments of document(Same as accepted answer)
-# Returns a dictionary with comment id as key and comment string as value
-def get_document_comments(docxFileName):
-    comments_dict={}
-    docxZip = zipfile.ZipFile(docxFileName)
-    documentXML = docxZip.read('word/document.xml')
-    commentsXML = docxZip.read('word/comments.xml')
-    etc = etree.XML(commentsXML)
-    comments = etc.xpath('//w:comment', namespaces=ooXMLns)
-    i = 0
-    for c in comments:
-        comment = c.xpath('string(.)', namespaces=ooXMLns)
-        comment_id = str(int(c.xpath('@w:id', namespaces=ooXMLns)[0]) + 1)
-        comments_dict[str(i)] = comment
-        i += 1
-    return comments_dict
 
-
-# Function to fetch all the comments in a paragraph
-def paragraph_comments(paragraph,comments_dict):
-    comments = []
-    for run in paragraph.runs:
-        comment_reference = run._r.xpath("./w:commentReference")
-        if comment_reference:
-            comment_id = comment_reference[0].xpath('@w:id', namespaces=ooXMLns)[0]
-            comment = comments_dict[comment_id]
-            comments.append([comment, comment_id])
-    return comments
-
-
-# Function to fetch all comments with their referenced paragraph
-# This will return list like this [{'Paragraph text': [comment 1,comment 2]}]
-def comments_with_reference_paragraph(docxFileName):
-
-    document = Document(docxFileName)
-    comments_dict = get_document_comments(docxFileName)
-    comments_with_their_reference_paragraph = dict()
-
-    for paragraph in document.paragraphs:
-        if comments_dict:
-            comments = paragraph_comments(paragraph, comments_dict)
-            if comments:
-                for c in comments:
-                    txt = paragraph.text.split("]]")[1].strip()
-                    number = paragraph.text.split("]]")[0].replace("[[", "")
-
-                    comments_with_their_reference_paragraph[c[1]] = [number, txt, unicodedata.normalize("NFKD", c[0]).strip()]
-
-    return comments_with_their_reference_paragraph
-
-def get_full_extraction(filepath):
+def get_full_extraction(filepath, chapter):
     doc = word.Documents.Open(filepath)
 
     comments = doc.Comments
     # Parcourir les commentaires
     extractions_full = []
+    id_annotation = 0
     for comment in comments:
         # Récupérer l'objet Range représentant le commentaire
         scope_comment = comment.Scope
         # Récupérer l'objet Range correspondant au paragraphe contenant le commentaire
-        comment_text = comment.Scope.Text
+        mention = re.sub(r"\[\[([0-9]*)\]\]", "", scope_comment.Text.encode("utf-8").decode()).strip()\
+            .replace("\n", "").replace("\r", "").replace("<", "").replace(">", "").replace(u'\u8232', "").replace(u"\xa0", "").replace(u"\x0b", "")
         # Récupère le text complet du paragraph
         # paragraph_complet = scope_comment.Paragraphs(1)
         # Récupère la portion de texte du paragraphe commentée
-        mention = comment.Range.Text
+        comment_text = unicodedata.normalize("NFKD", comment.Range.Text.encode("utf-8").decode().strip().replace("â€™", "'"))
 
         for p in scope_comment.Paragraphs:
-            id_paragraph = re.search(r"\[\[([0-9]*)\]\]", str(p)).group(1)
-            paragraph_clean = re.sub(r"\[\[([0-9]*)\]\]", "", str(p)).strip()
-            #todo add un re.split() pour isoler les chaines dans un paragraphe pour l'offset!
-            # tokens = re.split('[\s,;]+', str1)
-            print(comment_text.strip().find(paragraph_clean))
+            id_paragraph = re.search(r"\[\[([0-9]*)\]\]", p.Range.Text).group(1)
+            paragraph_clean = re.sub(r"\[\[([0-9]*)\]\]", "", p.Range.Text).strip()\
+                .replace("\n", "").replace("\r", "").replace("<", "").replace(">", "").replace(u'\u8232', "").replace(u"\xa0", "").replace(u"\x0b", "")
+
+            matcher = difflib.SequenceMatcher(None, paragraph_clean, mention, autojunk=False)
+            match = matcher.find_longest_match(0, len(paragraph_clean), 0, len(mention))
+            if match.size > 0:
+                start = match.a
+                end = match.a + match.size
+                size = match.size
+                common_match = paragraph_clean[start:end]
+            else:
+                # Error : la mention ne correspond pas aux paragraphes
+                print(f"Aucun matching pour {mention}")
+
+            """["annotation_id", "paragraphe_id", "paragraph_text",
+             "chapter",
+             "concepts", "mention", "common_text", "start", "end", "size"]"""
             extractions_full.append(
-                [id_paragraph, paragraph_clean, comment_text.strip(), mention.strip()]
+                [id_annotation, id_paragraph, paragraph_clean,
+                 chapter,
+                 comment_text.strip(), mention.strip(), common_match, start, end, size]
             )
+        id_annotation += 1
     return extractions_full
 
     doc.Close()
 
-
-def get_comments(filepath):
-    global nb_commentaire, nb_concepts
-    doc = word.Documents.Open(filepath)
-    doc.Activate()
-    activeDoc = word.ActiveDocument
-    annotation = list()
-    nb_commentaire += len(activeDoc.Comments)
-    idx = 0
-    for c in activeDoc.Comments:
-        if c.Ancestor is None:  # checking if this is a top-level comment
-            for elt in unicodedata.normalize("NFKD", c.Range.Text).strip().split(";"):
-                if elt == "":
-                    continue
-                elt = elt.replace("\n", "").replace("\r", "").replace(u"\xa0", "").strip()
-                text = c.Scope.Text.replace("\n", "").replace("\r", "").replace(u"\xa0", "").strip()
-                parent = ""
-                collection = False
-                for candidate in elt.split(":"):
-                    candidate = candidate.replace("\n", "").replace("\r", "").replace(u"\xa0", "").replace("?", "").replace("!","").replace("¿", "").strip()
-                    for temp in candidate.split(","):
-                        if temp == "":
-                            continue
-                        nb_concepts += 1
-                        for response in skos_search(
-                                temp.strip(),
-                                parent=parent,
-                                commentaire=elt,
-                                paragraph=extraction_paragraph[str(idx)][0].strip(),
-                                text=extraction_paragraph[str(idx)][1]
-                        ):
-                            if "idg=" in response:
-                                concept = response.split("idg=")[-1].split("&idt=")[0]
-                            else:
-                                concept = response.split("idc=")[-1].split("&idt=")[0]
-                            if str(idx) in extraction_paragraph.keys():
-                                annotation.append([
-                                    c.Index,
-                                    temp, text, concept,
-                                    f"{name_file.split('.')[0]}",
-                                    f"{name_file.split('.')[0].split('-')[1]}",
-                                    extraction_paragraph[str(idx)][0].strip()
-                                ])
-
-                    parent = candidate
-                idx += 1
-    doc.Close()
-    return annotation
 
 
 def sparqlQuery(graph, query):
@@ -209,7 +131,83 @@ def load(path):
 
     return graph
 
-def skos_search(label, parent, commentaire, paragraph, text):
+def error_detect_pattern(label_concept, row_obj):
+    id_annotation, paragraph_id, paragraph_text, chapter, concepts, mention, common_text, start, end, size = row_obj
+
+    if label_concept.isdigit() or "year" in label_concept:
+        error_found.append(["Numeric_Value", label_concept,
+                            id_annotation, paragraph_id, paragraph_text, chapter, concepts, mention,
+                            common_text, start, end, size
+                            ])
+    elif isIncompleteLabel(label_concept):
+        error_found.append(["IncompleteLabel", label_concept,
+                            id_annotation, paragraph_id, paragraph_text, chapter, concepts, mention,
+                            common_text, start, end, size
+                            ])
+    else:
+        error_found.append(["No_Concept", label_concept,
+                            id_annotation, paragraph_id, paragraph_text, chapter, concepts, mention,
+                            common_text, start, end, size
+                            ])
+
+
+def concept_search(annoted_list):
+    data_list = []
+    for row in annoted_list:
+        id_annotation, paragraph_id, paragraph_text, chapter, concepts, mention, common_text, start, end, size = row
+        distinct_concept = concepts.split(";")
+        for distinct in distinct_concept:
+            spread_concept = list(map(lambda x: x.replace("\r", "").replace("\n", "").replace(u'\u8232', "").replace(u"\xa0", "").strip(), distinct.split(":")))
+            parent = ""
+            for label_concept in spread_concept:
+                if label_concept == "":
+                    continue
+                for individual_label in label_concept.split(","):
+                    if "?" in individual_label:
+                        toCheck.append(["Need_validation", individual_label,
+                                            id_annotation, paragraph_id, paragraph_text, chapter, concepts, mention,
+                                            common_text, start, end, size
+                                            ])
+                    label_clean = individual_label.encode("utf-8").decode().strip().replace("?", "")
+                    result = skos_search(label_clean, parent, row)
+                    if len(result) > 1:
+                        """["error_type", "error_label", "annotation_id", "paragraph_id", "paragraph_text",
+                            "chapter",
+                            "concepts", "mention", "common_text", "start", "end", "size"]"""
+                        error_found.append([ "Ambigue", label_clean,
+                             id_annotation, paragraph_id, paragraph_text, chapter, concepts, mention,
+                             common_text, start, end, size
+                        ])
+                    elif result == []:
+                        error_detect_pattern(label_clean, [id_annotation, paragraph_id, paragraph_text, chapter, concepts, mention,
+                             common_text, start, end, size
+                        ])
+                    else:
+                        concept_id = result[0]
+                        data_list.append([id_annotation, concept_id, paragraph_id, paragraph_text, chapter, concepts, mention, common_text, start, end, size])
+                parent = label_concept
+    return data_list
+
+def isIncompleteLabel(label):
+    # check if label is contain in prefLabel
+    # Set incompleteLabel then
+    q = f"""
+    prefix skos: <http://www.w3.org/2004/02/skos/core#>  .
+
+    SELECT DISTINCT * WHERE {{
+        ?x a ?type;
+            skos:prefLabel ?label.
+        FILTER(lang(?label) = "en" || lang(?label) = "fr").
+        FILTER (contains(str(?label), "{label}")).
+    }}
+    """
+
+    query_result = sparqlQuery(graph, q)
+    candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
+    return candidate
+
+
+def skos_search(label, parent, row_obj):
     if parent != "":
         q = f"""
     prefix skos: <http://www.w3.org/2004/02/skos/core#>  .
@@ -220,7 +218,8 @@ select * where {{
             a ?type.
                   ?y skos:prefLabel ?collection;
         skos:member ?x.
-        filter(lang(?label) = "en").
+        filter(lang(?collection) = "en" || lang(?collection) = "fr").
+        FILTER(lang(?label) = "en" || lang(?label) = "fr").
         filter("{label}" in (ucase(str(?label)), lcase(str(?label)), str(?label))).
         filter( "{parent}" in (ucase(str(?collection)), lcase(str(?collection)), str(?collection))).
   }} UNION {{
@@ -228,7 +227,8 @@ select * where {{
                 a ?type;
                 skos:broader+ ?y.
                 ?y skos:prefLabel ?concept;
-        filter(lang(?label) = "en").
+        filter(lang(?concept) = "en" || lang(?concept) = "fr").
+        FILTER(lang(?label) = "en" || lang(?label) = "fr").
         filter("{label}" in (ucase(str(?label)), lcase(str(?label)), str(?label))).
         filter( "{parent}" in (ucase(str(?concept)), lcase(str(?concept)), str(?concept))).
   }}
@@ -236,14 +236,14 @@ select * where {{
 """
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
+
         if candidate == []:
-            #Maybe hierarchi is not respected
-            return skos_search(label, "", commentaire, paragraph, text)
-        if len(candidate) > 1:
-            # add to error ambigous hierarchi and name case
-            #["label", "parent", "chapter", "mention", "error_type"]
-            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "hierarchie_ambigu", paragraph, text])
-            return skos_search(label, "", commentaire, paragraph, text)
+            # Empty = Hierachy broken, no result for this descendant
+            # len > 1 = Ambigus respons for this concept
+            return skos_search(label, "", row_obj)
+        if len(candidate) > 1 :
+            # Ambigus respons for label with this hierarchy
+            return skos_search(label, "", row_obj)
         return candidate
     else:
         q = f"""
@@ -252,19 +252,20 @@ select * where {{
     SELECT DISTINCT * WHERE {{
         ?x a ?type;
             skos:prefLabel ?label.
+        FILTER(lang(?label) = "en" || lang(?label) = "fr").
         FILTER ("{label}" in (ucase(str(?label)), lcase(str(?label)), str(?label))).
     }}
     """
         query_result = sparqlQuery(graph, q)
         candidate = list(set([x.getValue("?x").toString() for x in query_result.getMappingList()]))
         if candidate == []:
-            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "not_found", paragraph, text])
+            # No concept found for isolated label
             return candidate
         if len(candidate) > 1:
-            error_found.append([label, parent, ",".join(candidate), f"{name_file.split('.')[0]}", commentaire, "concept_ambigu", paragraph, text])
-            # add to error ambigous concept case
+            # Ambigus concept for isolated label
             return candidate
         return candidate
+
 
 if __name__ == '__main__':
     alpha = time()
@@ -279,9 +280,12 @@ if __name__ == '__main__':
 
     word = win32.gencache.EnsureDispatch('Word.Application')
     word.Visible = False
-    paragraph_list = []
+
     annotation_list = []
+    annotation_result = []
     error_found = []
+    paragraph_list = []
+    toCheck = []
 
     for file in files:
         print(file)
@@ -300,19 +304,31 @@ if __name__ == '__main__':
             para_content[2].split("]]")[-1].strip(),
             file.split(".")[0].split("-")[1],
             "".join(p.split("]]")[0].split("[[")[-1]).strip(),
-            "".join(p.split("]]")[-1]).strip()] for p in para_content[3:] if p != ""])
+            "".join(p.encode("utf-8").decode().split("]]")[-1]).strip().replace("<", "").replace(">", "").replace(u'\u8232', "").replace(u"\xa0", "").replace(u"\x0b", "")]
+            for p in para_content[3:] if p != ""])
 
-        extraction_paragraph = comments_with_reference_paragraph(filepath)
-        annotation_list.extend(get_full_extraction(filepath))
+        annotation_list.extend(get_full_extraction(filepath, file.split(".")[0].split("-")[1]))
+    annotation_result.extend(concept_search(annotation_list))
 
-    no_concept = pd.DataFrame(error_found, columns=["label", "parent", "candidate","chapter", "mention", "error_type", "paragraph", "text"])
-    no_concept.to_csv(f"error_found.csv", index=False, encoding="utf-8", sep=";", lineterminator="\n")
+    no_concept = pd.DataFrame(error_found, columns=["error_type", "error_label", "annotation_id", "paragraph_id", "paragraph_text",
+                        "chapter",
+                        "concepts", "mention", "common_text", "start", "end", "size"])
+    to_check = pd.DataFrame(toCheck, columns=["error_type", "error_label", "annotation_id", "paragraph_id", "paragraph_text",
+                        "chapter",
+                        "concepts", "mention", "common_text", "start", "end", "size"])
+    to_check.to_csv(f"to_check.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
+    no_concept.to_csv(f"error_found.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
-    extract_para = pd.DataFrame(paragraph_list, columns=["name", "title", "author", "edition", "chapter", "paragraph_number", "paragraphe_text"])
-    extract_para.to_csv(f"paragraphs.csv", index=False, encoding="utf-8", sep=";", lineterminator="\n")
+    extract_para = pd.DataFrame(paragraph_list,
+                                columns=["name", "title", "author", "edition", "chapter", "paragraph_number",
+                                         "paragraphe_text"])
+    extract_para.to_csv(f"paragraphs.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
-    extraction_annotation = pd.DataFrame(annotation_list, columns=["id", "annotation", "text", "concept", "name", "chapter", "paragraph"])
-    extraction_annotation.to_csv(f"comment_extraction.csv", index=False, encoding="utf-8", sep=";", lineterminator="\n")
+    extraction_annotation = pd.DataFrame(annotation_list, columns=["annotation_id", "paragraph_id", "paragraph_text",
+                                                                   "chapter",
+                                                                   "concepts", "mention", "common_text", "start", "end", "size"])
+
+    extraction_annotation.to_csv(f"comment_extraction.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
     print(f"Traitement fini en '{time() - alpha}' secondes")
     print(f"nombre de paragraphes {nb_paragraph}, nombre de commentaires {nb_commentaire}, nombre de concepts: {nb_concepts}")
