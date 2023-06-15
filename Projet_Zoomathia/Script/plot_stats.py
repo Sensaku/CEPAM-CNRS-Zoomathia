@@ -180,11 +180,11 @@ def get_QC1():
 
 if __name__ == '__main__':
 
-    label = ["generated", "to_check", "ambigue", "numeric", "incomplete", "no_concept"]
-    value = [8188, 128, 109, 7, 1052, 1549]
+    label = ["SAUVAGE", "DOMESTIQUE"]
+    value = [1621, 0]
     plt.bar(label, value)
     plt.tight_layout()
-    plt.savefig('stats/stats_generation2.png')
+    plt.savefig('stats/qc1_stats_wild.png')
 
     """files = ["annotations.ttl", "paragraph.ttl", "th310.ttl"]
     g = load(files)

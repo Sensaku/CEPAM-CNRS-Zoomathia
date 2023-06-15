@@ -183,8 +183,11 @@ def concept_search(annoted_list):
                              common_text, start, end, size
                         ])
                     else:
-                        concept_id = result[0]
-                        data_list.append([id_annotation, concept_id, paragraph_id, paragraph_text, chapter, concepts, mention, common_text, start, end, size])
+                        concept_id = result[0].split("?idg=")[-1].split("?idc=")[-1].split("&idt=")[0]
+                        if "?idg=" in result[0]:
+                            data_list.append([id_annotation, "Collection", concept_id, paragraph_id, paragraph_text, chapter, concepts, mention, common_text, start, end, size])
+                        else:
+                            data_list.append([id_annotation, "Concept", concept_id, paragraph_id, paragraph_text, chapter, concepts, mention, common_text, start, end, size])
                 parent = label_concept
     return data_list
 
@@ -308,6 +311,10 @@ if __name__ == '__main__':
             for p in para_content[3:] if p != ""])
 
         annotation_list.extend(get_full_extraction(filepath, file.split(".")[0].split("-")[1]))
+    treatment = pd.DataFrame(annotation_list, columns=["annotation_id", "paragraphe_id", "paragraph_text",
+             "chapter",
+             "concepts", "mention", "common_text", "start", "end", "size"])
+    treatment.to_csv("treatment.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
     annotation_result.extend(concept_search(annotation_list))
 
     no_concept = pd.DataFrame(error_found, columns=["error_type", "error_label", "annotation_id", "paragraph_id", "paragraph_text",
@@ -317,14 +324,13 @@ if __name__ == '__main__':
                         "chapter",
                         "concepts", "mention", "common_text", "start", "end", "size"])
     to_check.to_csv(f"to_check.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
-    no_concept.to_csv(f"error_found.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
+    no_concept.to_csv(f"error_found_new.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
 
     extract_para = pd.DataFrame(paragraph_list,
                                 columns=["name", "title", "author", "edition", "chapter", "paragraph_number",
                                          "paragraphe_text"])
     extract_para.to_csv(f"paragraphs.csv", index=False, encoding="utf-8", sep=";", line_terminator="\n")
-
-    extraction_annotation = pd.DataFrame(annotation_list, columns=["annotation_id", "paragraph_id", "paragraph_text",
+    extraction_annotation = pd.DataFrame(annotation_result, columns=["annotation_id", "concept_type", "concept_id", "paragraph_id", "paragraph_text",
                                                                    "chapter",
                                                                    "concepts", "mention", "common_text", "start", "end", "size"])
 
